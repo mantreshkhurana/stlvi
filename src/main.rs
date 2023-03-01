@@ -118,7 +118,6 @@ fn swap_mesh(w: &mut Window, c: &mut SceneNode, f: &Path) -> SceneNode {
 fn set_mesh(w: &mut Window, mut c: &mut SceneNode, mesh: Mesh) -> SceneNode {
     w.remove_node(&mut c);
     let mut n = w.add_mesh(Rc::new(RefCell::new(mesh)), Vector3::new(0.3, 0.3, 0.3));
-    n.set_color(1.0, 0.0, 0.0);
     n.set_color(1.0, 1.0, 1.0);
     n
 }
