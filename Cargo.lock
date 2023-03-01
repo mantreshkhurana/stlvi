@@ -1493,16 +1493,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-stl-viewer"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "kiss3d",
- "notify",
- "stl_io",
-]
-
-[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1677,6 +1667,16 @@ name = "strsim"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6446ced80d6c486436db5c078dde11a9f73d42b57fb273121e160b84f63d894c"
+
+[[package]]
+name = "stylly"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "kiss3d",
+ "notify",
+ "stl_io",
+]
 
 [[package]]
 name = "syn"

@@ -1,5 +1,5 @@
 [package]
-name = "rust-stl-viewer"
+name = "stylly"
 version = "1.0.0"
 authors = ["Mantresh Khurana"]
 edition = "2018"

@@ -13,8 +13,8 @@ use std::path::Path;
 use std::rc::Rc;
 
 fn load_stl(filename: &Path) -> stl_io::IndexedMesh {
-    let mut f = File::open(&filename).expect("file not found");
-    stl_io::read_stl(&mut f).expect("can't read")
+    let mut f = File::open(&filename).expect("File not found");
+    stl_io::read_stl(&mut f).expect("Can't read")
 }
 
 fn to_resized_kiss_mesh(imesh: &stl_io::IndexedMesh) -> Mesh {
@@ -37,7 +37,7 @@ fn to_resized_kiss_mesh(imesh: &stl_io::IndexedMesh) -> Mesh {
         .iter()
         .map(|it| {
             Point3::new(
-                it.vertices[0] as u16, // may panic on very large meshes
+                it.vertices[0] as u16, 
                 it.vertices[1] as u16,
                 it.vertices[2] as u16,
             )
@@ -119,6 +119,7 @@ fn set_mesh(w: &mut Window, mut c: &mut SceneNode, mesh: Mesh) -> SceneNode {
     w.remove_node(&mut c);
     let mut n = w.add_mesh(Rc::new(RefCell::new(mesh)), Vector3::new(0.3, 0.3, 0.3));
     n.set_color(1.0, 0.0, 0.0);
+    n.set_color(1.0, 1.0, 1.0);
     n
 }
 
