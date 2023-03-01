@@ -9,6 +9,10 @@ It is available in both CLI and GUI mode.
 - [x] Windows
 - [x] Mac
 
+## Screenshots
+
+![Screenshot](./screenshots/screenshot-1.png)
+
 ## Installation
 
 This installation is only for development purpose. If you want to use this tool, please use the binary from the release page which is `Coming Soon`.
@@ -33,6 +37,17 @@ cargo run models/model-1.stl
 
 > Example: `stlvi models/model-1.stl`
 
-## Screenshots
+## Contributing
 
-![Screenshot](./screenshots/screenshot-1.png)
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+After forking `git clone https://github.com/mantreshkhurana/stlvi.git` and `cd stlvi` and then create a new branch for your changes.
+
+```bash
+git clone https://github.com/mantreshkhurana/stlvi.git
+cd stlvi
+git checkout -b BRANCH_NAME
+git add .
+git commit -m "COMMIT_MESSAGE"
+git push origin BRANCH_NAME
+```
