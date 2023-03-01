@@ -1,19 +1,19 @@
-# Stylly
+# stlvi
 
 STL viewer written in Rust. This project is still in development.
 
 ## Installation
 
 ```bash
-git clone https://github.com/mantreshkhurana/stylly.git
-cd stylly
+git clone https://github.com/mantreshkhurana/stlvi.git
+cd stlvi
 cargo install --path .
 ```
 
 ## Usage
 
 ```bash
-stylly path/to/model.stl
+stlvi path/to/model.stl
 ```
 
 ## Test
@@ -22,7 +22,7 @@ stylly path/to/model.stl
 cargo run models/model-1.stl 
 ```
 
-> Example: `stylly models/model-1.stl`
+> Example: `stlvi models/model-1.stl`
 
 ## Screenshots
 
