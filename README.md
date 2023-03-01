@@ -11,6 +11,8 @@ It is available in both CLI and GUI mode.
 
 ## Installation
 
+This installation is only for development purpose. If you want to use this tool, please use the binary from the release page which is `Coming Soon`.
+
 ```bash
 git clone https://github.com/mantreshkhurana/stlvi.git
 cd stlvi

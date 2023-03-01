@@ -1,22 +1,48 @@
-mod file_watcher;
+/*
+1. load_stl loads the stl file and returns a stl_io::IndexedMesh struct
+2. to_resized_kiss_mesh converts the stl_io::IndexedMesh to a kiss3d::Mesh struct and scales it so that it fits in the window
+3. get_bounds finds the maximum and minimum x,y,z values
+4. get_center finds the center of the mesh
+5. get_appropriate_scale finds the appropriate scale for the mesh
+6. swap_mesh removes the old mesh from the window and adds the new one
+7. set_mesh removes the old mesh from the window and adds the new one
+8. main loads the stl file and sets it as the initial mesh
+9. window.set_light(Light::StickToCamera); 
+10. window.set_framerate_limit(Some(60)); 
+11. while window.render() {
+    if !watch.changed()? {
+        continue;
+    }
+    let mut file = File::open(filename)?;
+    let stl = stl_io::read_stl(&mut file)?;
+    let mesh = to_resized_kiss_mesh(&stl);
+    set_mesh(&mut window, &mut c, mesh);
+}
+*/
 
-use file_watcher::FileRevisions;
-use kiss3d::light::Light;
-use kiss3d::nalgebra as na;
-use kiss3d::resource::Mesh;
-use kiss3d::scene::SceneNode;
+mod checker;
+
 use kiss3d::window::Window;
 use na::{Point3, Vector3};
 use std::cell::RefCell;
 use std::fs::File;
+use checker::FileRevisions;
+use kiss3d::light::Light;
+use kiss3d::nalgebra as na;
+use kiss3d::resource::Mesh;
+use kiss3d::scene::SceneNode;
 use std::path::Path;
 use std::rc::Rc;
 
+/// Loads an STL file into an indexed mesh.
 fn load_stl(filename: &Path) -> stl_io::IndexedMesh {
-    let mut f = File::open(&filename).expect("file not found");
+    let mut f = File::open(filename).expect("file not found");
     stl_io::read_stl(&mut f).expect("can't read")
 }
 
+/// This function converts an stl_io::IndexedMesh to a kiss3d::Mesh.
+/// It also resizes the mesh to be within a unit cube centered at the origin.
+/// This is useful so that the mesh can be properly displayed in a window.
 fn to_resized_kiss_mesh(imesh: &stl_io::IndexedMesh) -> Mesh {
     let bounds = get_bounds(imesh);
     let center = get_center(bounds);
@@ -46,6 +72,15 @@ fn to_resized_kiss_mesh(imesh: &stl_io::IndexedMesh) -> Mesh {
     Mesh::new(vertices, indices, None, None, false)
 }
 
+/// This function finds the maximum and minimum values for each of the
+/// x, y, and z coordinates in the mesh.
+/// The function first finds the maximum value for each coordinate by
+/// iterating over the vertices of the mesh, and then finding the maximum
+/// value for each coordinate in the vertices. The function then finds the
+/// minimum value for each coordinate by iterating over the vertices of the
+/// mesh, and then finding the minimum value for each coordinate in the
+/// vertices. The function returns a tuple containing the minimum and
+/// maximum values for each coordinate.
 fn get_bounds(mesh: &stl_io::IndexedMesh) -> (Vector3<f32>, Vector3<f32>) {
     let max_x = mesh
         .vertices
@@ -89,11 +124,15 @@ fn get_bounds(mesh: &stl_io::IndexedMesh) -> (Vector3<f32>, Vector3<f32>) {
     )
 }
 
+/// This function calculates the center of an AABB
+/// The AABB is passed in as a tuple of two Vector3<f32>
+/// The first Vector3<f32> is the minimum corner of the AABB
+/// The second Vector3<f32> is the maximum corner of the AABB
 fn get_center(bounds: (Vector3<f32>, Vector3<f32>)) -> Vector3<f32> {
     let mut center = bounds.0 + bounds.1;
-    center.x = center.x / 2.0;
-    center.y = center.y / 2.0;
-    center.z = center.z / 2.0;
+    center.x /= 2.0;
+    center.y /= 2.0;
+    center.z /= 2.0;
     center
 }
 
@@ -109,6 +148,8 @@ fn get_appropriate_scale(bounds: (Vector3<f32>, Vector3<f32>)) -> f32 {
     return 1.0 / m;
 }
 
+/// This function swaps the mesh of the scene node c with the mesh from
+/// the file f. It also resizes the mesh to fit in a unit cube.
 fn swap_mesh(w: &mut Window, c: &mut SceneNode, f: &Path) -> SceneNode {
     let imesh = load_stl(f);
     let mesh = to_resized_kiss_mesh(&imesh);

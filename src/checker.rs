@@ -1,3 +1,13 @@
+/*
+1. The watch function watches a file for changes. It returns a Result with two possible errors: ErrorKind::Io and ErrorKind::PathNotFound. I have to use the anyhow::Result to handle these errors.
+2. The try_recv function returns a Result with two possible errors: TryRecvError::Empty and TryRecvError::Disconnected. I have to use the anyhow::Result to handle these errors.
+3. The ErrorKind::Io and ErrorKind::PathNotFound errors are converted to anyhow::Error by the ? operator. 
+4. The TryRecvError::Empty and TryRecvError::Disconnected errors are converted to anyhow::Error by the panic!() function. 
+5. The panic!() function is called because the code should never reach the TryRecvError::Disconnected error. The program will panic if the error is reached. 
+6. I used the panic!() function because I don't know how to handle the TryRecvError::Disconnected error.
+7. The code above is not the best way to implement the FileRevisions struct. The code should be refactored to handle the TryRecvError::Disconnected error. 
+*/
+
 use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, TryRecvError};
