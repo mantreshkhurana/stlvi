@@ -1,6 +1,7 @@
-# stlvi
+# Stlvi
 
 STL viewer written in Rust. This project is still in development.
+It is available in both CLI and GUI mode.
 
 ## Installation
 
