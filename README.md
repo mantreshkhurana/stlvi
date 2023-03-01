@@ -3,6 +3,12 @@
 STL viewer written in Rust. This project is still in development.
 It is available in both CLI and GUI mode.
 
+## Supported OS
+
+- [x] Linux
+- [x] Windows
+- [x] Mac
+
 ## Installation
 
 ```bash
