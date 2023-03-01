@@ -13,8 +13,8 @@ use std::path::Path;
 use std::rc::Rc;
 
 fn load_stl(filename: &Path) -> stl_io::IndexedMesh {
-    let mut f = File::open(&filename).expect("File not found");
-    stl_io::read_stl(&mut f).expect("Can't read")
+    let mut f = File::open(&filename).expect("file not found");
+    stl_io::read_stl(&mut f).expect("can't read")
 }
 
 fn to_resized_kiss_mesh(imesh: &stl_io::IndexedMesh) -> Mesh {
