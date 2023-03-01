@@ -1,0 +1,11 @@
+[package]
+name = "rust-stl-viewer"
+version = "1.0.0"
+authors = ["Mantresh Khurana <mantreshkhurana.com>"]
+edition = "2018"
+
+[dependencies]
+stl_io = "0.7.0"
+kiss3d = "0.35.0"
+notify = "5.1.0"
+anyhow = "1.0.69"
