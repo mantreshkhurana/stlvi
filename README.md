@@ -16,6 +16,12 @@ cargo install --path .
 stl-viewer path/to/model.stl
 ```
 
+## Test
+
+```bash
+cargo run models/model-1.stl 
+```
+
 > Example: `rust-stl-viewer models/model-1.stl`
 
 ## Screenshots
