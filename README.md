@@ -13,7 +13,7 @@ cargo install --path .
 ## Usage
 
 ```bash
-stl-viewer path/to/model.stl
+rust-stl-viewer path/to/model.stl
 ```
 
 ## Test
