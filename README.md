@@ -46,8 +46,9 @@ After forking `git clone https://github.com/mantreshkhurana/stlvi.git` and `cd s
 ```bash
 git clone https://github.com/mantreshkhurana/stlvi.git
 cd stlvi
-git checkout -b BRANCH_NAME
+git checkout -b <your-branch-name>
+# After adding your changes
 git add .
-git commit -m "COMMIT_MESSAGE"
-git push origin BRANCH_NAME
+git commit -m "your commit message"
+git push origin <your-branch-name>
 ```
