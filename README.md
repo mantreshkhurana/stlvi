@@ -52,3 +52,7 @@ git add .
 git commit -m "your commit message"
 git push origin <your-branch-name>
 ```
+
+## Author
+
+- [Mantresh Khurana](https://github.com/mantreshkhurana)
