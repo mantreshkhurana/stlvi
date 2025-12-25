@@ -1,191 +1,498 @@
-/*
-1. load_stl loads the stl file and returns a stl_io::IndexedMesh struct
-2. to_resized_kiss_mesh converts the stl_io::IndexedMesh to a kiss3d::Mesh struct and scales it so that it fits in the window
-3. get_bounds finds the maximum and minimum x,y,z values
-4. get_center finds the center of the mesh
-5. get_appropriate_scale finds the appropriate scale for the mesh
-6. swap_mesh removes the old mesh from the window and adds the new one
-7. set_mesh removes the old mesh from the window and adds the new one
-8. main loads the stl file and sets it as the initial mesh
-9. window.set_light(Light::StickToCamera); 
-10. window.set_framerate_limit(Some(60)); 
-11. while window.render() {
-    if !watch.changed()? {
-        continue;
-    }
-    let mut file = File::open(filename)?;
-    let stl = stl_io::read_stl(&mut file)?;
-    let mesh = to_resized_kiss_mesh(&stl);
-    set_mesh(&mut window, &mut c, mesh);
-}
-*/
-
+mod axis_cube;
 mod checker;
+mod grid;
+mod mesh_utils;
+mod state;
+mod ui;
 
-use kiss3d::window::Window;
-use na::{Point3, Vector3};
-use std::cell::RefCell;
-use std::fs::File;
 use checker::FileRevisions;
-use kiss3d::light::Light;
-use kiss3d::nalgebra as na;
-use kiss3d::resource::Mesh;
-use kiss3d::scene::SceneNode;
-use std::path::Path;
-use std::rc::Rc;
-
-/// Loads an STL file into an indexed mesh.
-fn load_stl(filename: &Path) -> stl_io::IndexedMesh {
-    let mut f = File::open(filename).expect("file not found");
-    stl_io::read_stl(&mut f).expect("can't read")
-}
-
-/// This function converts an stl_io::IndexedMesh to a kiss3d::Mesh.
-/// It also resizes the mesh to be within a unit cube centered at the origin.
-/// This is useful so that the mesh can be properly displayed in a window.
-fn to_resized_kiss_mesh(imesh: &stl_io::IndexedMesh) -> Mesh {
-    let bounds = get_bounds(imesh);
-    let center = get_center(bounds);
-    let scale = get_appropriate_scale(bounds);
-    let vertices: Vec<Point3<f32>> = imesh
-        .vertices
-        .iter()
-        .map(|v| {
-            Point3::new(
-                (v[0] - center.x) * scale,
-                (v[1] - center.y) * scale,
-                (v[2] - center.z) * scale,
-            )
-        })
-        .collect();
-    let indices: Vec<Point3<u16>> = imesh
-        .faces
-        .iter()
-        .map(|it| {
-            Point3::new(
-                it.vertices[0] as u16, 
-                it.vertices[1] as u16,
-                it.vertices[2] as u16,
-            )
-        })
-        .collect();
-    Mesh::new(vertices, indices, None, None, false)
-}
-
-/// This function finds the maximum and minimum values for each of the
-/// x, y, and z coordinates in the mesh.
-/// The function first finds the maximum value for each coordinate by
-/// iterating over the vertices of the mesh, and then finding the maximum
-/// value for each coordinate in the vertices. The function then finds the
-/// minimum value for each coordinate by iterating over the vertices of the
-/// mesh, and then finding the minimum value for each coordinate in the
-/// vertices. The function returns a tuple containing the minimum and
-/// maximum values for each coordinate.
-fn get_bounds(mesh: &stl_io::IndexedMesh) -> (Vector3<f32>, Vector3<f32>) {
-    let max_x = mesh
-        .vertices
-        .iter()
-        .map(|v| v[0])
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .expect("zero length mesh");
-    let max_y = mesh
-        .vertices
-        .iter()
-        .map(|v| v[1])
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .expect("zero length mesh");
-    let max_z = mesh
-        .vertices
-        .iter()
-        .map(|v| v[2])
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .expect("zero length mesh");
-    let min_x = mesh
-        .vertices
-        .iter()
-        .map(|v| v[0])
-        .max_by(|b, a| a.partial_cmp(b).unwrap())
-        .expect("zero length mesh");
-    let min_y = mesh
-        .vertices
-        .iter()
-        .map(|v| v[1])
-        .max_by(|b, a| a.partial_cmp(b).unwrap())
-        .expect("zero length mesh");
-    let min_z = mesh
-        .vertices
-        .iter()
-        .map(|v| v[2])
-        .max_by(|b, a| a.partial_cmp(b).unwrap())
-        .expect("zero length mesh");
-    (
-        Vector3::new(min_x, min_y, min_z),
-        Vector3::new(max_x, max_y, max_z),
-    )
-}
-
-/// This function calculates the center of an AABB
-/// The AABB is passed in as a tuple of two Vector3<f32>
-/// The first Vector3<f32> is the minimum corner of the AABB
-/// The second Vector3<f32> is the maximum corner of the AABB
-fn get_center(bounds: (Vector3<f32>, Vector3<f32>)) -> Vector3<f32> {
-    let mut center = bounds.0 + bounds.1;
-    center.x /= 2.0;
-    center.y /= 2.0;
-    center.z /= 2.0;
-    center
-}
-
-fn get_appropriate_scale(bounds: (Vector3<f32>, Vector3<f32>)) -> f32 {
-    let diff = bounds.0 - bounds.1;
-    let mut m = diff.x.abs();
-    if m > diff.y.abs() {
-        m = diff.y.abs();
-    }
-    if m > diff.z.abs() {
-        m = diff.z.abs();
-    }
-    return 1.0 / m;
-}
-
-/// This function swaps the mesh of the scene node c with the mesh from
-/// the file f. It also resizes the mesh to fit in a unit cube.
-fn swap_mesh(w: &mut Window, c: &mut SceneNode, f: &Path) -> SceneNode {
-    let imesh = load_stl(f);
-    let mesh = to_resized_kiss_mesh(&imesh);
-    set_mesh(w, c, mesh)
-}
-
-fn set_mesh(w: &mut Window, mut c: &mut SceneNode, mesh: Mesh) -> SceneNode {
-    w.remove_node(&mut c);
-    let mut n = w.add_mesh(Rc::new(RefCell::new(mesh)), Vector3::new(0.3, 0.3, 0.3));
-    n.set_color(1.0, 1.0, 1.0);
-    n
-}
+use state::{AppState, CameraView, EditMode, ModelInfo};
+use three_d::*;
+use ui::MenuAction;
 
 fn main() -> anyhow::Result<()> {
-    use std::env;
-    let Some(flns) = env::args().nth(1) else {
-        return Err(anyhow::anyhow!("no file name given"));
-    };
+    // Get filename from args (optional now)
+    let initial_file = std::env::args().nth(1);
 
-    let filename = Path::new(&flns);
-    let mut watch = FileRevisions::from_path(filename)?;
-    let mut window = Window::new(&flns);
-    let mut c = window.add_cube(0.1, 0.1, 0.1);
-    c = swap_mesh(&mut window, &mut c, filename);
-    window.set_light(Light::StickToCamera);
-    window.set_framerate_limit(Some(60));
+    // Create window
+    let window = Window::new(WindowSettings {
+        title: "STLVI - STL Viewer".to_string(),
+        max_size: Some((1920, 1080)),
+        ..Default::default()
+    })?;
 
-    while window.render() {
-        if !watch.changed()? {
-            continue;
+    let context = window.gl();
+
+    // Initialize state
+    let mut state = AppState::default();
+    let mut show_shortcuts = false;
+    let mut show_about = false;
+
+    // Camera
+    let mut camera = Camera::new_perspective(
+        window.viewport(),
+        vec3(3.0, 2.0, 3.0),
+        vec3(0.0, 0.0, 0.0),
+        vec3(0.0, 1.0, 0.0),
+        degrees(45.0),
+        0.1,
+        1000.0,
+    );
+    let mut orbit_control = OrbitControl::new(vec3(0.0, 0.0, 0.0), 1.0, 100.0);
+
+    // Lighting
+    let ambient = AmbientLight::new(&context, 0.4, Srgba::WHITE);
+    let directional = DirectionalLight::new(&context, 2.0, Srgba::WHITE, &vec3(-1.0, -1.0, -1.0));
+    let directional2 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(1.0, 0.5, 0.5));
+
+    // Grid
+    let mut grid_mesh = grid::create_grid(&context, 10.0, 20, Srgba::new(80, 80, 90, 255));
+    let axis_lines = grid::create_axis_lines(&context, 1.5);
+
+    // Axis cube gizmo (for future use with orientation display)
+    let _axis_cube = axis_cube::AxisCube::new(&context);
+
+    // Model storage
+    let mut model: Option<Gm<Mesh, PhysicalMaterial>> = None;
+    let mut model_positions: Vec<[f32; 3]> = Vec::new();
+    let mut model_normals: Vec<[f32; 3]> = Vec::new();
+
+    // File watcher
+    let mut file_watcher: Option<FileRevisions> = None;
+
+    // Load initial file if provided
+    if let Some(ref path) = initial_file {
+        if let Ok((mut positions, normals)) =
+            mesh_utils::load_stl(std::path::Path::new(path))
+        {
+            let original_positions = positions.clone();
+            mesh_utils::normalize_mesh(&mut positions);
+
+            let cpu_mesh = mesh_utils::create_mesh(&context, &positions, &normals);
+            let material = PhysicalMaterial::new_opaque(
+                &context,
+                &CpuMaterial {
+                    albedo: Srgba::new(204, 204, 217, 255),
+                    roughness: 0.5,
+                    metallic: 0.1,
+                    ..Default::default()
+                },
+            );
+            model = Some(Gm::new(Mesh::new(&context, &cpu_mesh), material));
+            model_positions = positions;
+            model_normals = normals;
+            state.current_file = Some(path.clone());
+            state.model_info = Some(ModelInfo::from_mesh(&original_positions));
+
+            // Setup file watcher
+            if let Ok(watcher) = FileRevisions::from_path(std::path::Path::new(path)) {
+                file_watcher = Some(watcher);
+            }
         }
-        let mut file = File::open(filename)?;
-        let stl = stl_io::read_stl(&mut file)?;
-        let mesh = to_resized_kiss_mesh(&stl);
-        set_mesh(&mut window, &mut c, mesh);
     }
 
+    // FPS tracking
+    let mut frame_times: Vec<f32> = Vec::new();
+    let mut last_time = std::time::Instant::now();
+
+    // Create GUI once outside the render loop to prevent flickering
+    let mut gui = three_d::GUI::new(&context);
+
+    // Main loop
+    window.render_loop(move |mut frame_input| {
+        // Calculate FPS
+        let now = std::time::Instant::now();
+        let delta = now.duration_since(last_time).as_secs_f32();
+        last_time = now;
+        frame_times.push(delta);
+        if frame_times.len() > 60 {
+            frame_times.remove(0);
+        }
+        let avg_delta = frame_times.iter().sum::<f32>() / frame_times.len() as f32;
+        let fps = if avg_delta > 0.0 { 1.0 / avg_delta } else { 0.0 };
+
+        // Update camera
+        camera.set_viewport(frame_input.viewport);
+
+        // Handle keyboard shortcuts
+        for event in frame_input.events.iter() {
+            match event {
+                Event::KeyPress { kind, modifiers, .. } => {
+                    match kind {
+                        Key::Escape => state.edit_mode = EditMode::View,
+                        Key::G => state.edit_mode = EditMode::Translate,
+                        Key::R => state.edit_mode = EditMode::Rotate,
+                        Key::S if !modifiers.ctrl => state.edit_mode = EditMode::Scale,
+                        Key::Num1 => {
+                            state.current_view = CameraView::Front;
+                            let pos = state.current_view.get_position(5.0);
+                            camera.set_view(pos, vec3(0.0, 0.0, 0.0), state.current_view.get_up());
+                        }
+                        Key::Num2 => {
+                            state.current_view = CameraView::Back;
+                            let pos = state.current_view.get_position(5.0);
+                            camera.set_view(pos, vec3(0.0, 0.0, 0.0), state.current_view.get_up());
+                        }
+                        Key::Num3 => {
+                            state.current_view = CameraView::Left;
+                            let pos = state.current_view.get_position(5.0);
+                            camera.set_view(pos, vec3(0.0, 0.0, 0.0), state.current_view.get_up());
+                        }
+                        Key::Num4 => {
+                            state.current_view = CameraView::Right;
+                            let pos = state.current_view.get_position(5.0);
+                            camera.set_view(pos, vec3(0.0, 0.0, 0.0), state.current_view.get_up());
+                        }
+                        Key::Num5 => {
+                            state.current_view = CameraView::Top;
+                            let pos = state.current_view.get_position(5.0);
+                            camera.set_view(pos, vec3(0.0, 0.0, 0.0), state.current_view.get_up());
+                        }
+                        Key::Num6 => {
+                            state.current_view = CameraView::Bottom;
+                            let pos = state.current_view.get_position(5.0);
+                            camera.set_view(pos, vec3(0.0, 0.0, 0.0), state.current_view.get_up());
+                        }
+                        Key::Num7 => {
+                            state.current_view = CameraView::Isometric;
+                            let pos = state.current_view.get_position(5.0);
+                            camera.set_view(pos, vec3(0.0, 0.0, 0.0), state.current_view.get_up());
+                        }
+                        Key::Home => {
+                            state.current_view = CameraView::Isometric;
+                            let pos = state.current_view.get_position(5.0);
+                            camera.set_view(pos, vec3(0.0, 0.0, 0.0), state.current_view.get_up());
+                            state.model_transform.reset();
+                        }
+                        Key::O if modifiers.ctrl => {
+                            // Open file dialog
+                            if let Some(path) = rfd::FileDialog::new()
+                                .add_filter("STL files", &["stl", "STL"])
+                                .pick_file()
+                            {
+                                load_model(
+                                    &context,
+                                    &path,
+                                    &mut model,
+                                    &mut model_positions,
+                                    &mut model_normals,
+                                    &mut state,
+                                    &mut file_watcher,
+                                );
+                            }
+                        }
+                        Key::S if modifiers.ctrl && modifiers.shift => {
+                            // Save As
+                            if let Some(path) = rfd::FileDialog::new()
+                                .add_filter("STL files", &["stl"])
+                                .save_file()
+                            {
+                                let transformed = mesh_utils::transform_positions(
+                                    &model_positions,
+                                    state.model_transform.translation,
+                                    state.model_transform.rotation,
+                                    state.model_transform.scale,
+                                );
+                                if mesh_utils::save_stl(&path, &transformed, &model_normals, true).is_ok() {
+                                    state.current_file = Some(path.to_string_lossy().to_string());
+                                    state.unsaved_changes = false;
+                                }
+                            }
+                        }
+                        Key::S if modifiers.ctrl => {
+                            // Save
+                            if let Some(ref path) = state.current_file {
+                                let transformed = mesh_utils::transform_positions(
+                                    &model_positions,
+                                    state.model_transform.translation,
+                                    state.model_transform.rotation,
+                                    state.model_transform.scale,
+                                );
+                                if mesh_utils::save_stl(
+                                    std::path::Path::new(path),
+                                    &transformed,
+                                    &model_normals,
+                                    true,
+                                ).is_ok() {
+                                    state.unsaved_changes = false;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Handle camera control (only when not hovering UI)
+        let orbit_event = orbit_control.handle_events(&mut camera, &mut frame_input.events);
+        if orbit_event {
+            state.current_view = CameraView::Custom;
+        }
+
+        // Check for file changes (hot reload)
+        if let Some(ref mut watcher) = file_watcher {
+            if watcher.changed().unwrap_or(false) {
+                if let Some(ref path) = state.current_file {
+                    if let Ok((mut positions, normals)) =
+                        mesh_utils::load_stl(std::path::Path::new(path))
+                    {
+                        let original_positions = positions.clone();
+                        mesh_utils::normalize_mesh(&mut positions);
+
+                        let cpu_mesh = mesh_utils::create_mesh(&context, &positions, &normals);
+                        let material = PhysicalMaterial::new_opaque(
+                            &context,
+                            &CpuMaterial {
+                                albedo: Srgba::new(
+                                    (state.view_settings.model_color[0] * 255.0) as u8,
+                                    (state.view_settings.model_color[1] * 255.0) as u8,
+                                    (state.view_settings.model_color[2] * 255.0) as u8,
+                                    255,
+                                ),
+                                roughness: 0.5,
+                                metallic: 0.1,
+                                ..Default::default()
+                            },
+                        );
+                        model = Some(Gm::new(Mesh::new(&context, &cpu_mesh), material));
+                        model_positions = positions;
+                        model_normals = normals;
+                        state.model_info = Some(ModelInfo::from_mesh(&original_positions));
+                    }
+                }
+            }
+        }
+
+        // GUI update
+        let mut menu_action = MenuAction::None;
+
+        gui.update(
+            &mut frame_input.events,
+            frame_input.accumulated_time,
+            frame_input.viewport,
+            frame_input.device_pixel_ratio,
+            |ctx| {
+                menu_action = ui::draw_menu_bar(ctx, &mut state);
+                ui::draw_transform_panel(ctx, &mut state);
+                ui::draw_info_panel(ctx, &state);
+                ui::draw_settings_panel(ctx, &mut state);
+                ui::draw_status_bar(ctx, &state, fps);
+
+                if show_shortcuts {
+                    ui::draw_shortcuts_window(ctx, &mut show_shortcuts);
+                }
+                if show_about {
+                    ui::draw_about_window(ctx, &mut show_about);
+                }
+            },
+        );
+
+        // Handle menu actions
+        match menu_action {
+            MenuAction::OpenFile => {
+                if let Some(path) = rfd::FileDialog::new()
+                    .add_filter("STL files", &["stl", "STL"])
+                    .pick_file()
+                {
+                    load_model(
+                        &context,
+                        &path,
+                        &mut model,
+                        &mut model_positions,
+                        &mut model_normals,
+                        &mut state,
+                        &mut file_watcher,
+                    );
+                }
+            }
+            MenuAction::Save => {
+                if let Some(ref path) = state.current_file {
+                    let transformed = mesh_utils::transform_positions(
+                        &model_positions,
+                        state.model_transform.translation,
+                        state.model_transform.rotation,
+                        state.model_transform.scale,
+                    );
+                    if mesh_utils::save_stl(
+                        std::path::Path::new(path),
+                        &transformed,
+                        &model_normals,
+                        true,
+                    ).is_ok() {
+                        state.unsaved_changes = false;
+                    }
+                }
+            }
+            MenuAction::SaveAs | MenuAction::ExportBinary => {
+                if let Some(path) = rfd::FileDialog::new()
+                    .add_filter("STL files", &["stl"])
+                    .save_file()
+                {
+                    let transformed = mesh_utils::transform_positions(
+                        &model_positions,
+                        state.model_transform.translation,
+                        state.model_transform.rotation,
+                        state.model_transform.scale,
+                    );
+                    if mesh_utils::save_stl(&path, &transformed, &model_normals, true).is_ok() {
+                        if matches!(menu_action, MenuAction::SaveAs) {
+                            state.current_file = Some(path.to_string_lossy().to_string());
+                        }
+                        state.unsaved_changes = false;
+                    }
+                }
+            }
+            MenuAction::ExportAscii => {
+                if let Some(path) = rfd::FileDialog::new()
+                    .add_filter("STL files", &["stl"])
+                    .save_file()
+                {
+                    let transformed = mesh_utils::transform_positions(
+                        &model_positions,
+                        state.model_transform.translation,
+                        state.model_transform.rotation,
+                        state.model_transform.scale,
+                    );
+                    let _ = mesh_utils::save_stl(&path, &transformed, &model_normals, false);
+                }
+            }
+            MenuAction::RecalculateNormals => {
+                model_normals = mesh_utils::recalculate_normals(&model_positions);
+                // Rebuild mesh with new normals
+                let cpu_mesh = mesh_utils::create_mesh(&context, &model_positions, &model_normals);
+                let material = PhysicalMaterial::new_opaque(
+                    &context,
+                    &CpuMaterial {
+                        albedo: Srgba::new(
+                            (state.view_settings.model_color[0] * 255.0) as u8,
+                            (state.view_settings.model_color[1] * 255.0) as u8,
+                            (state.view_settings.model_color[2] * 255.0) as u8,
+                            255,
+                        ),
+                        roughness: 0.5,
+                        metallic: 0.1,
+                        ..Default::default()
+                    },
+                );
+                model = Some(Gm::new(Mesh::new(&context, &cpu_mesh), material));
+                state.unsaved_changes = true;
+            }
+            MenuAction::CenterModel => {
+                state.model_transform.translation = [0.0, 0.0, 0.0];
+                state.unsaved_changes = true;
+            }
+            MenuAction::SetCameraView(view) => {
+                let pos = view.get_position(5.0);
+                camera.set_view(pos, vec3(0.0, 0.0, 0.0), view.get_up());
+            }
+            MenuAction::ShowShortcuts => {
+                show_shortcuts = true;
+            }
+            MenuAction::ShowAbout => {
+                show_about = true;
+            }
+            MenuAction::Quit => {
+                return FrameOutput {
+                    exit: true,
+                    ..Default::default()
+                };
+            }
+            MenuAction::None => {}
+        }
+
+        // Update model transform
+        if let Some(ref mut m) = model {
+            m.set_transformation(state.model_transform.to_matrix());
+        }
+
+        // Update grid based on settings
+        if state.view_settings.show_grid {
+            grid_mesh = grid::create_grid(
+                &context,
+                state.view_settings.grid_size,
+                state.view_settings.grid_divisions,
+                Srgba::new(80, 80, 90, 255),
+            );
+        }
+
+        // Render
+        let bg = &state.view_settings.background_color;
+        let _ = frame_input
+            .screen()
+            .clear(ClearState::color_and_depth(bg[0], bg[1], bg[2], 1.0, 1.0))
+            .render(
+                &camera,
+                {
+                    let mut objects: Vec<&dyn Object> = Vec::new();
+
+                    // Grid
+                    if state.view_settings.show_grid {
+                        objects.push(&grid_mesh);
+                        for axis in &axis_lines {
+                            objects.push(axis);
+                        }
+                    }
+
+                    // Model
+                    if let Some(ref m) = model {
+                        objects.push(m);
+                    }
+
+                    objects
+                },
+                &[&ambient, &directional, &directional2],
+            )
+            .write(|| {
+                gui.render()
+            });
+
+        FrameOutput::default()
+    });
+
     Ok(())
+}
+
+fn load_model(
+    context: &Context,
+    path: &std::path::Path,
+    model: &mut Option<Gm<Mesh, PhysicalMaterial>>,
+    model_positions: &mut Vec<[f32; 3]>,
+    model_normals: &mut Vec<[f32; 3]>,
+    state: &mut AppState,
+    file_watcher: &mut Option<FileRevisions>,
+) {
+    if let Ok((mut positions, normals)) = mesh_utils::load_stl(path) {
+        let original_positions = positions.clone();
+        mesh_utils::normalize_mesh(&mut positions);
+
+        let cpu_mesh = mesh_utils::create_mesh(context, &positions, &normals);
+        let material = PhysicalMaterial::new_opaque(
+            context,
+            &CpuMaterial {
+                albedo: Srgba::new(
+                    (state.view_settings.model_color[0] * 255.0) as u8,
+                    (state.view_settings.model_color[1] * 255.0) as u8,
+                    (state.view_settings.model_color[2] * 255.0) as u8,
+                    255,
+                ),
+                roughness: 0.5,
+                metallic: 0.1,
+                ..Default::default()
+            },
+        );
+        *model = Some(Gm::new(Mesh::new(context, &cpu_mesh), material));
+        *model_positions = positions;
+        *model_normals = normals;
+        state.current_file = Some(path.to_string_lossy().to_string());
+        state.model_info = Some(ModelInfo::from_mesh(&original_positions));
+        state.model_transform.reset();
+        state.unsaved_changes = false;
+
+        // Setup file watcher
+        if let Ok(watcher) = FileRevisions::from_path(path) {
+            *file_watcher = Some(watcher);
+        }
+    }
 }

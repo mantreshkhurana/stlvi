@@ -1,11 +1,27 @@
 [package]
 name = "stlvi"
-version = "1.0.0"
+version = "2.0.0"
 authors = ["Mantresh Khurana"]
-edition = "2018"
+edition = "2021"
+description = "A powerful STL 3D model viewer with GUI controls"
 
 [dependencies]
+# 3D rendering with egui integration
+three-d = { version = "0.17", features = ["egui-gui"] }
+three-d-asset = "0.7"
+
+# STL file handling
 stl_io = "0.7.0"
-kiss3d = "0.35.0"
+
+# File watching for hot reload
 notify = "5.1.0"
+
+# Error handling
 anyhow = "1.0.69"
+
+# File dialogs
+rfd = "0.14"
+
+# Serialization for settings
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
