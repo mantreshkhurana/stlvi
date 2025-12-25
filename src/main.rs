@@ -1,8 +1,10 @@
 mod axis_cube;
 mod checker;
+mod gizmo;
 mod grid;
 mod mesh_utils;
 mod state;
+mod theme;
 mod ui;
 
 use checker::FileRevisions;
@@ -51,6 +53,9 @@ fn main() -> anyhow::Result<()> {
 
     // Axis cube gizmo (for future use with orientation display)
     let _axis_cube = axis_cube::AxisCube::new(&context);
+
+    // Transform gizmo for model manipulation
+    let mut transform_gizmo = gizmo::TransformGizmo::new(&context);
 
     // Model storage
     let mut model: Option<Gm<Mesh, PhysicalMaterial>> = None;
@@ -229,6 +234,9 @@ fn main() -> anyhow::Result<()> {
         let orbit_event = orbit_control.handle_events(&mut camera, &mut frame_input.events);
         if orbit_event {
             state.current_view = CameraView::Custom;
+            // Sync zoom level with camera distance
+            let distance = camera.position().magnitude();
+            state.zoom_level = distance.clamp(1.0, 20.0);
         }
 
         // Check for file changes (hot reload)
@@ -267,6 +275,7 @@ fn main() -> anyhow::Result<()> {
 
         // GUI update
         let mut menu_action = MenuAction::None;
+        let mut zoom_changed = false;
 
         gui.update(
             &mut frame_input.events,
@@ -274,11 +283,14 @@ fn main() -> anyhow::Result<()> {
             frame_input.viewport,
             frame_input.device_pixel_ratio,
             |ctx| {
+                // Apply Fusion 360-style theme
+                theme::apply_fusion_theme(ctx);
+
                 menu_action = ui::draw_menu_bar(ctx, &mut state);
                 ui::draw_transform_panel(ctx, &mut state);
                 ui::draw_info_panel(ctx, &state);
                 ui::draw_settings_panel(ctx, &mut state);
-                ui::draw_status_bar(ctx, &state, fps);
+                zoom_changed = ui::draw_status_bar(ctx, &mut state, fps);
 
                 if show_shortcuts {
                     ui::draw_shortcuts_window(ctx, &mut show_shortcuts);
@@ -288,6 +300,15 @@ fn main() -> anyhow::Result<()> {
                 }
             },
         );
+
+        // Handle zoom slider changes
+        if zoom_changed {
+            let target = vec3(0.0, 0.0, 0.0);
+            let direction = (camera.position() - target).normalize();
+            let new_pos = target + direction * state.zoom_level;
+            let up = *camera.up();
+            camera.set_view(new_pos, target, up);
+        }
 
         // Handle menu actions
         match menu_action {
@@ -407,6 +428,27 @@ fn main() -> anyhow::Result<()> {
             m.set_transformation(state.model_transform.to_matrix());
         }
 
+        // Update gizmo visibility and mode based on edit mode
+        transform_gizmo.visible = model.is_some() && state.edit_mode != EditMode::View;
+        match state.edit_mode {
+            EditMode::Translate => transform_gizmo.set_mode(gizmo::GizmoMode::Translate),
+            EditMode::Rotate => transform_gizmo.set_mode(gizmo::GizmoMode::Rotate),
+            EditMode::Scale => transform_gizmo.set_mode(gizmo::GizmoMode::Scale),
+            EditMode::View => {}
+        }
+
+        // Update gizmo position to follow model
+        if model.is_some() {
+            let camera_distance = camera.position().magnitude();
+            let model_center = vec3(
+                state.model_transform.translation[0],
+                state.model_transform.translation[1] + 0.5, // Slightly above model center
+                state.model_transform.translation[2],
+            );
+            transform_gizmo.update(model_center, camera_distance);
+            transform_gizmo.apply_transform();
+        }
+
         // Update grid based on settings
         if state.view_settings.show_grid {
             grid_mesh = grid::create_grid(
@@ -438,6 +480,11 @@ fn main() -> anyhow::Result<()> {
                     // Model
                     if let Some(ref m) = model {
                         objects.push(m);
+                    }
+
+                    // Transform gizmo
+                    for gizmo_obj in transform_gizmo.get_render_objects() {
+                        objects.push(gizmo_obj);
                     }
 
                     objects

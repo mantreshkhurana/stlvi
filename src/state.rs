@@ -59,8 +59,10 @@ impl Default for ViewSettings {
             show_axis_cube: true,
             wireframe_mode: false,
             show_normals: false,
-            background_color: [0.1, 0.1, 0.12],
-            model_color: [0.8, 0.8, 0.85],
+            // Fusion 360-inspired dark canvas background
+            background_color: [0.18, 0.20, 0.22],
+            // Light gray model color
+            model_color: [0.82, 0.82, 0.85],
             grid_size: 10.0,
             grid_divisions: 20,
         }
@@ -124,6 +126,7 @@ pub struct AppState {
     pub show_settings_panel: bool,
     pub show_transform_panel: bool,
     pub show_info_panel: bool,
+    pub zoom_level: f32,
 }
 
 impl Default for AppState {
@@ -139,6 +142,7 @@ impl Default for AppState {
             show_settings_panel: false,
             show_transform_panel: true,
             show_info_panel: true,
+            zoom_level: 5.0,
         }
     }
 }

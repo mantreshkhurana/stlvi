@@ -1,7 +1,6 @@
 use three_d::*;
 
 #[allow(dead_code)]
-#[allow(unused)]
 
 /// Axis cube gizmo for orientation reference
 pub struct AxisCube {
@@ -68,12 +67,14 @@ impl AxisCube {
     }
 
     /// Get the axis cube objects for rendering
+    #[allow(dead_code)]
     pub fn get_objects(&self) -> Vec<&dyn Object> {
         vec![&self.cube, &self.x_arrow, &self.y_arrow, &self.z_arrow]
     }
 }
 
 /// Handle click on axis cube to change view
+#[allow(dead_code)]
 pub fn handle_axis_cube_click(
     click_pos: (f32, f32),
     viewport: Viewport,

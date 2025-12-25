@@ -60,16 +60,25 @@ pub fn calculate_scale(min: [f32; 3], max: [f32; 3]) -> f32 {
     }
 }
 
-/// Center and scale mesh positions
+/// Center and scale mesh positions, placing model on top of grid (Y=0)
 pub fn normalize_mesh(positions: &mut [[f32; 3]]) {
     let (min, max) = calculate_bounds(positions);
     let center = calculate_center(min, max);
     let scale = calculate_scale(min, max);
 
+    // First center and scale
     for pos in positions.iter_mut() {
         pos[0] = (pos[0] - center[0]) * scale;
         pos[1] = (pos[1] - center[1]) * scale;
         pos[2] = (pos[2] - center[2]) * scale;
+    }
+
+    // Then find new min Y and lift model so it sits on the grid (Y=0)
+    let (new_min, _) = calculate_bounds(positions);
+    let y_offset = -new_min[1]; // Lift by the amount below zero
+
+    for pos in positions.iter_mut() {
+        pos[1] += y_offset;
     }
 }
 
